@@ -1,0 +1,4 @@
+audio/*.wav
+models/
+examples/
+kaldi-gstreamer-server/test

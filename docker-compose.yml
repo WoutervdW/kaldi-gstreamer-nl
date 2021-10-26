@@ -1,0 +1,28 @@
+version: "3.7"
+
+services:
+  redis:
+    image: redis:latest
+    expose:
+      - "6379"
+    ports:
+      - "6379:6379"
+    networks:
+      - internal
+  
+  kaldi-worker:
+    image: testje-34
+    expose:
+      - "80"
+    ports:
+      - "8080:80"
+    networks:
+      - internal
+    volumes:
+      - "~/Projects/docker-kaldi-gstreamer-server/models:/opt/models"
+    
+networks:
+  internal:
+    driver_opts:
+      internal: "true"
+    driver: "bridge"
