@@ -14,13 +14,10 @@ import logging
 import os
 from collections import OrderedDict
 
-import thread
-
 logger = logging.getLogger(__name__)
 
-import pdb
-
 import redis
+
 
 r = redis.Redis(host="redis", port=6379, db=0)
 

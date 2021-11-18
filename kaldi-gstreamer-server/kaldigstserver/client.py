@@ -1,14 +1,13 @@
 __author__ = "tanel"
 
+import Queue
 import argparse
 import json
-import os
 import sys
 import threading
 import time
 import urllib
 
-import Queue
 from ws4py.client.threadedclient import WebSocketClient
 
 

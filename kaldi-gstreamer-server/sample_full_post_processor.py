@@ -10,6 +10,7 @@ The confidence scores are now normalized
 import json
 import logging
 import sys
+
 from math import exp
 
 

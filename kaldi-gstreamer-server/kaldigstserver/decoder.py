@@ -14,11 +14,7 @@ Gst.init(None)
 import logging
 import os
 
-import thread
-
 logger = logging.getLogger(__name__)
-
-import pdb
 
 r = redis.Redis(host="redis", port=6379, db=0)
 

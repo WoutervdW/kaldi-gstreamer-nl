@@ -6,12 +6,13 @@ Created on Jun 27, 2013
 @author: tanel
 """
 import logging
+import thread
 import time
 import unittest
 
-import thread
+from gi.repository import GObject
+
 from decoder import DecoderPipeline
-from gi.repository import GObject, Gst
 
 
 class DecoderPipelineTests(unittest.TestCase):
