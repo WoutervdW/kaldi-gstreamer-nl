@@ -5,23 +5,25 @@ Created on May 17, 2013
 """
 import gi
 
-gi.require_version('Gst', '1.0')
+gi.require_version("Gst", "1.0")
 from gi.repository import GObject, Gst
 
 GObject.threads_init()
 Gst.init(None)
 import logging
-import thread
 import os
 from collections import OrderedDict
+
+import thread
 
 logger = logging.getLogger(__name__)
 
 import pdb
+
 import redis
 
+r = redis.Redis(host="redis", port=6379, db=0)
 
-r = redis.Redis(host='redis', port=6379, db=0)
 
 class DecoderPipeline2(object):
     def __init__(self, conf={}):
@@ -33,14 +35,15 @@ class DecoderPipeline2(object):
             if not os.path.exists(self.outdir):
                 os.makedirs(self.outdir)
             elif not os.path.isdir(self.outdir):
-                raise Exception("Output directory %s already exists as a file" % self.outdir)
+                raise Exception(
+                    "Output directory %s already exists as a file" % self.outdir
+                )
 
         self.result_handler = None
         self.full_result_handler = None
         self.eos_handler = None
         self.error_handler = None
         self.request_id = "<undefined>"
-
 
     def create_pipeline(self, conf):
 
@@ -56,30 +59,31 @@ class DecoderPipeline2(object):
         self.fakesink = Gst.ElementFactory.make("fakesink", "fakesink")
 
         if not self.asr:
-            print >> sys.stderr, "ERROR: Couldn't create the kaldinnet2onlinedecoder element!"
+            print >>sys.stderr, "ERROR: Couldn't create the kaldinnet2onlinedecoder element!"
             gst_plugin_path = os.environ.get("GST_PLUGIN_PATH")
             if gst_plugin_path:
-                print >> sys.stderr, \
-                    "Couldn't find kaldinnet2onlinedecoder element at %s. " \
-                    "If it's not the right path, try to set GST_PLUGIN_PATH to the right one, and retry. " \
-                    "You can also try to run the following command: " \
-                    "'GST_PLUGIN_PATH=%s gst-inspect-1.0 kaldinnet2onlinedecoder'." \
-                    % (gst_plugin_path, gst_plugin_path)
+                print >>sys.stderr, "Couldn't find kaldinnet2onlinedecoder element at %s. " "If it's not the right path, try to set GST_PLUGIN_PATH to the right one, and retry. " "You can also try to run the following command: " "'GST_PLUGIN_PATH=%s gst-inspect-1.0 kaldinnet2onlinedecoder'." % (
+                    gst_plugin_path,
+                    gst_plugin_path,
+                )
             else:
-                print >> sys.stderr, \
-                    "The environment variable GST_PLUGIN_PATH wasn't set or it's empty. " \
-                    "Try to set GST_PLUGIN_PATH environment variable, and retry."
-            sys.exit(-1);
+                print >>sys.stderr, "The environment variable GST_PLUGIN_PATH wasn't set or it's empty. " "Try to set GST_PLUGIN_PATH environment variable, and retry."
+            sys.exit(-1)
 
         # This needs to be set first
         if "use-threaded-decoder" in conf["decoder"]:
-            self.asr.set_property("use-threaded-decoder", conf["decoder"]["use-threaded-decoder"])
+            self.asr.set_property(
+                "use-threaded-decoder", conf["decoder"]["use-threaded-decoder"]
+            )
 
         decoder_config = conf.get("decoder", {})
-        if 'nnet-mode' in decoder_config:
-          logger.info("Setting decoder property: %s = %s" % ('nnet-mode', decoder_config['nnet-mode']))
-          self.asr.set_property('nnet-mode', decoder_config['nnet-mode'])
-          del decoder_config['nnet-mode']
+        if "nnet-mode" in decoder_config:
+            logger.info(
+                "Setting decoder property: %s = %s"
+                % ("nnet-mode", decoder_config["nnet-mode"])
+            )
+            self.asr.set_property("nnet-mode", decoder_config["nnet-mode"])
+            del decoder_config["nnet-mode"]
 
         decoder_config = OrderedDict(decoder_config)
 
@@ -87,7 +91,7 @@ class DecoderPipeline2(object):
             decoder_config["fst"] = decoder_config.pop("fst")
         if "model" in decoder_config:
             decoder_config["model"] = decoder_config.pop("model")
-        
+
         for (key, val) in decoder_config.iteritems():
             if key != "use-threaded-decoder":
                 logger.info("Setting decoder property: %s = %s" % (key, val))
@@ -95,20 +99,29 @@ class DecoderPipeline2(object):
 
         self.appsrc.set_property("is-live", True)
         self.filesink.set_property("location", "/dev/null")
-        logger.info('Created GStreamer elements')
+        logger.info("Created GStreamer elements")
 
         self.pipeline = Gst.Pipeline()
-        for element in [self.appsrc, self.decodebin, self.audioconvert, self.audioresample, self.tee,
-                        self.queue1, self.filesink,
-                        self.queue2, self.asr, self.fakesink]:
+        for element in [
+            self.appsrc,
+            self.decodebin,
+            self.audioconvert,
+            self.audioresample,
+            self.tee,
+            self.queue1,
+            self.filesink,
+            self.queue2,
+            self.asr,
+            self.fakesink,
+        ]:
             logger.debug("Adding %s to the pipeline" % element)
             self.pipeline.add(element)
 
-        logger.info('Linking GStreamer elements')
+        logger.info("Linking GStreamer elements")
 
         self.appsrc.link(self.decodebin)
-        #self.appsrc.link(self.audioconvert)
-        self.decodebin.connect('pad-added', self._connect_decoder)
+        # self.appsrc.link(self.audioconvert)
+        self.decodebin.connect("pad-added", self._connect_decoder)
         self.audioconvert.link(self.audioresample)
 
         self.audioresample.link(self.tee)
@@ -125,13 +138,13 @@ class DecoderPipeline2(object):
         self.bus = self.pipeline.get_bus()
         self.bus.add_signal_watch()
         self.bus.enable_sync_message_emission()
-        self.bus.connect('message::eos', self._on_eos)
-        self.bus.connect('message::error', self._on_error)
-        #self.bus.connect('message::cutter', self._on_cutter)
+        self.bus.connect("message::eos", self._on_eos)
+        self.bus.connect("message::error", self._on_error)
+        # self.bus.connect('message::cutter', self._on_cutter)
 
-        self.asr.connect('partial-result', self._on_partial_result)
-        self.asr.connect('final-result', self._on_final_result)
-        self.asr.connect('full-final-result', self._on_full_final_result)
+        self.asr.connect("partial-result", self._on_partial_result)
+        self.asr.connect("final-result", self._on_final_result)
+        self.asr.connect("full-final-result", self._on_full_final_result)
 
         logger.info("Setting pipeline to READY")
         self.pipeline.set_state(Gst.State.READY)
@@ -142,19 +155,23 @@ class DecoderPipeline2(object):
         pad.link(self.audioconvert.get_static_pad("sink"))
         logger.info("%s: Connected audio decoder" % self.request_id)
 
-
     def _on_partial_result(self, asr, hyp):
-        logger.info("%s: Got partial result: %s" % (self.request_id, hyp.decode('utf8')))
+        logger.info(
+            "%s: Got partial result: %s" % (self.request_id, hyp.decode("utf8"))
+        )
         if self.result_handler:
-            self.result_handler(hyp.decode('utf8'), False)
+            self.result_handler(hyp.decode("utf8"), False)
 
     def _on_final_result(self, asr, hyp):
-        logger.info("%s: Got final result: %s" % (self.request_id, hyp.decode('utf8')))
+        logger.info("%s: Got final result: %s" % (self.request_id, hyp.decode("utf8")))
         if self.result_handler:
-            self.result_handler(hyp.decode('utf8'), True)
+            self.result_handler(hyp.decode("utf8"), True)
 
     def _on_full_final_result(self, asr, result_json):
-        logger.info("%s: Got full final result: %s" % (self.request_id, result_json.decode('utf8')))
+        logger.info(
+            "%s: Got full final result: %s"
+            % (self.request_id, result_json.decode("utf8"))
+        )
         if self.full_result_handler:
             self.full_result_handler(result_json)
 
@@ -166,8 +183,8 @@ class DecoderPipeline2(object):
             self.error_handler(self.error[0].message)
 
     def _on_eos(self, bus, msg):
-        logger.info('%s: Pipeline received eos signal' % self.request_id)
-        #self.decodebin.unlink(self.audioconvert)
+        logger.info("%s: Pipeline received eos signal" % self.request_id)
+        # self.decodebin.unlink(self.audioconvert)
         self.finish_request()
         if self.eos_handler:
             self.eos_handler[0](self.eos_handler[1])
@@ -187,11 +204,10 @@ class DecoderPipeline2(object):
         logger.info("%s: Resetting decoder state" % self.request_id)
         if self.outdir:
             self.filesink.set_state(Gst.State.NULL)
-            self.filesink.set_property('location', "/dev/null")
+            self.filesink.set_property("location", "/dev/null")
             self.filesink.set_state(Gst.State.PLAYING)
         self.pipeline.set_state(Gst.State.NULL)
         self.request_id = "<undefined>"
-
 
     def init_request(self, id, caps_str):
         self.request_id = id
@@ -201,35 +217,34 @@ class DecoderPipeline2(object):
             caps = Gst.caps_from_string(caps_str)
             self.appsrc.set_property("caps", caps)
         else:
-            #caps = Gst.caps_from_string("")
+            # caps = Gst.caps_from_string("")
             self.appsrc.set_property("caps", None)
-            #self.pipeline.set_state(Gst.State.READY)
+            # self.pipeline.set_state(Gst.State.READY)
             pass
-        #self.appsrc.set_state(Gst.State.PAUSED)
+        # self.appsrc.set_state(Gst.State.PAUSED)
 
         if self.outdir:
             self.pipeline.set_state(Gst.State.PAUSED)
             self.filesink.set_state(Gst.State.NULL)
-            self.filesink.set_property('location', "%s/%s.raw" % (self.outdir, id))
+            self.filesink.set_property("location", "%s/%s.raw" % (self.outdir, id))
             self.filesink.set_state(Gst.State.PLAYING)
 
-        #self.filesink.set_state(Gst.State.PLAYING)        
-        #self.decodebin.set_state(Gst.State.PLAYING)
+        # self.filesink.set_state(Gst.State.PLAYING)
+        # self.decodebin.set_state(Gst.State.PLAYING)
         self.pipeline.set_state(Gst.State.PLAYING)
         self.filesink.set_state(Gst.State.PLAYING)
         # push empty buffer (to avoid hang on client diconnect)
-        #buf = Gst.Buffer.new_allocate(None, 0, None)
-        #self.appsrc.emit("push-buffer", buf)
+        # buf = Gst.Buffer.new_allocate(None, 0, None)
+        # self.appsrc.emit("push-buffer", buf)
 
         # reset adaptation state
         self.set_adaptation_state("")
 
-
     def _get_buffer_cache(self, buffer_count):
         cache = []
         for buffer_index in range(buffer_count):
-            data = r.get('cache_' + str(buffer_index))
-            if data is None or len(data) == 0: 
+            data = r.get("cache_" + str(buffer_index))
+            if data is None or len(data) == 0:
                 continue
             buffer = Gst.Buffer.new_allocate(None, len(data), None)
             buffer.fill(0, data)
@@ -239,12 +254,13 @@ class DecoderPipeline2(object):
         return cache
 
     def _write_buffer_list_cache(self, buffer_list):
-        logger.info('writing buffer list cache')
+        logger.info("writing buffer list cache")
         for idx, buffer in enumerate(buffer_list):
             (result, mapinfo) = buffer.map(Gst.MapFlags.READ)
-            r.set('cache_'+str(idx), mapinfo.data)
+            r.set("cache_" + str(idx), mapinfo.data)
         return True
-       # buffer_list.foreach(self._write_buffer_cache)
+
+    # buffer_list.foreach(self._write_buffer_cache)
 
     # def _write_buffer_cache(buffer, idx):
     #     logger.info('writing buffer cache + ' + idx)
@@ -254,21 +270,23 @@ class DecoderPipeline2(object):
     #     return idx != self.buffer_count-1
 
     def process_data(self, data):
-        logger.info('Retrieving buffer cahce')
+        logger.info("Retrieving buffer cahce")
         buffer_list = self._get_buffer_cache(self.buffer_count)
 
-        logger.info('%s: Pushing buffer of size %d to pipeline' % (self.request_id, len(data)))
+        logger.info(
+            "%s: Pushing buffer of size %d to pipeline" % (self.request_id, len(data))
+        )
         self.buffer_count = self.buffer_count + 1
         buf = Gst.Buffer.new_allocate(None, len(data), None)
         buf.fill(0, data)
         buffer_list.append(buf)
-        
-        logger.info('%s: Pushing buffer done' % self.request_id)
+
+        logger.info("%s: Pushing buffer done" % self.request_id)
         self.appsrc.emit("push-buffer", buf)
         # for buffer in buffer_list:
         #     self.appsrc.emit("push-buffer", buffer)
         # self.appsrc.emit("end-of-stream")
-        logger.info('%s: Writing buffer cache' % self.request_id)
+        logger.info("%s: Writing buffer cache" % self.request_id)
         self._write_buffer_list_cache(buffer_list)
 
     def end_request(self):
@@ -288,24 +306,28 @@ class DecoderPipeline2(object):
         self.error_handler = handler
 
     def load_from_cache(self):
-        logger.info('Running from cache with a buffer size of ' + str(self.buffer_count))
-        self.init_request('id', '')
+        logger.info(
+            "Running from cache with a buffer size of " + str(self.buffer_count)
+        )
+        self.init_request("id", "")
         buffer_list = self._get_buffer_cache(self.buffer_count)
         for buffer in buffer_list:
             self.appsrc.emit("push-buffer", buffer)
-        logger.info('pushed all cached buffers')
+        logger.info("pushed all cached buffers")
         self.end_request()
 
-
     def cancel(self):
-        logger.info("%s: Sending EOS to pipeline in order to cancel processing" % self.request_id)
+        logger.info(
+            "%s: Sending EOS to pipeline in order to cancel processing"
+            % self.request_id
+        )
         self.appsrc.emit("end-of-stream")
         self.finish_request()
-        #self.asr.set_property("silent", True)
-        #self.pipeline.set_state(Gst.State.NULL)
+        # self.asr.set_property("silent", True)
+        # self.pipeline.set_state(Gst.State.NULL)
 
-        #if (self.pipeline.get_state() == Gst.State.PLAYING):
-        #logger.debug("Sending EOS to pipeline")
+        # if (self.pipeline.get_state() == Gst.State.PLAYING):
+        # logger.debug("Sending EOS to pipeline")
         self.pipeline.send_event(Gst.Event.new_eos())
         self.pipeline.set_state(Gst.State.READY)
         logger.info("%s: Cancelled pipeline" % self.request_id)

@@ -1,16 +1,17 @@
 #!/usr/bin/env python
-'''
+"""
 Sample script that shows how to postprocess full results from the kaldi-gstreamer-worker, encoded as JSON.
 
 It adds a sentence confidence score to the 1-best hypothesis, deletes all other hypotheses and
 adds a dot (.) to the end of the 1-best hypothesis. It assumes that the results contain at least two hypotheses,
 The confidence scores are now normalized
-'''
+"""
 
-import sys
 import json
 import logging
+import sys
 from math import exp
+
 
 def post_process_json(str):
     try:
@@ -22,7 +23,7 @@ def post_process_json(str):
                 confidence = likelihood1 - likelihood2
                 confidence = 1 - exp(-confidence)
             else:
-                confidence = 1.0e+10;
+                confidence = 1.0e10
             event["result"]["hypotheses"][0]["confidence"] = confidence
 
             event["result"]["hypotheses"][0]["transcript"] += "."
@@ -35,12 +36,15 @@ def post_process_json(str):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG, format="%(levelname)8s %(asctime)s %(message)s ")
+    logging.basicConfig(
+        level=logging.DEBUG, format="%(levelname)8s %(asctime)s %(message)s "
+    )
 
     lines = []
     while True:
         l = sys.stdin.readline()
-        if not l: break # EOF
+        if not l:
+            break  # EOF
         if l.strip() == "":
             if len(lines) > 0:
                 result_json = post_process_json("".join(lines))

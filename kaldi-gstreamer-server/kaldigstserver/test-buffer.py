@@ -1,5 +1,6 @@
 import gi
-gi.require_version('Gst', '1.0')
+
+gi.require_version("Gst", "1.0")
 from gi.repository import GObject, Gst
 
 GObject.threads_init()
@@ -20,7 +21,7 @@ print "Using data: %s" % data
 
 buf = Gst.Buffer.new_allocate(None, len(data), None)
 buf.fill(0, data)
-#for (i, c) in enumerate(data):
+# for (i, c) in enumerate(data):
 #    buf.memset(i, c, 1)
 appsrc.emit("push-buffer", buf)
 
