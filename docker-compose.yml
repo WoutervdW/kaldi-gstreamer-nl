@@ -11,7 +11,7 @@ services:
       - internal
   
   kaldi-worker:
-    image: testje-34
+    image: docker-kaldi-gstreamer
     expose:
       - "80"
     ports:
@@ -19,7 +19,7 @@ services:
     networks:
       - internal
     volumes:
-      - "~/Projects/docker-kaldi-gstreamer-server/models:/opt/models"
+      - "~/Documents/politie/gdas/docker-kaldi-gstreamer/models:/opt/models"
     
 networks:
   internal:
